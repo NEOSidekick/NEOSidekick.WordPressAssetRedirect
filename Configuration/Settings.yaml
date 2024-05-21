@@ -1,0 +1,7 @@
+Neos:
+  Flow:
+    http:
+      middlewares:
+        wordPressAssetRedirect:
+          position: 'after routing 1000'
+          middleware: 'NEOSidekick\WordPressAssetRedirect\RedirectMiddleware'
