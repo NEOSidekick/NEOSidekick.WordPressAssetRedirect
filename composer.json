@@ -1,7 +1,10 @@
 {
-    "description": "Provides a redirect middleware which automatically redirects your old WordPress asset URIs to Neos asset URIs",
-    "type": "neos-package",
     "name": "neosidekick/wordpressassetredirect",
+    "type": "neos-package",
+    "description": "Provides a redirect middleware which automatically redirects your old WordPress asset URIs to Neos asset URIs",
+    "license" : [
+        "GPL-3.0-or-later"
+    ],
     "require": {
         "neos/flow": "^7.0 || ^8.0"
     },
