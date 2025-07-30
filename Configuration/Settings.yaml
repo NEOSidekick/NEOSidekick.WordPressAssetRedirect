@@ -5,3 +5,9 @@ Neos:
         wordPressAssetRedirect:
           position: 'after routing 1000'
           middleware: 'NEOSidekick\WordPressAssetRedirect\RedirectMiddleware'
+
+# ----------------------------------------------------------------------
+# Settings for the CLI Asset Import Tool
+# ----------------------------------------------------------------------
+# Note: The main path for the asset import scanner is provided as a required '--path' argument
+# to the CLI command (assets:import). This file is reserved for future, optional settings.
