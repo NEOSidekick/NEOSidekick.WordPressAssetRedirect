@@ -89,6 +89,7 @@ The import process follows these steps:
 4. Counts the total number of files to be processed
 5. Displays a progress bar during the import
 6. For each file:
+   - Skips generated WordPress thumbnails whose names contain a size suffix such as `-150x150`
    - Imports the file as a resource
    - Checks if an asset with the same resource already exists (to prevent duplicates)
    - Creates a new Asset with appropriate metadata
@@ -103,6 +104,7 @@ The command provides a comprehensive summary report:
 - Number of new assets successfully imported
 - Number of files skipped (because they already existed as assets)
 - Number of files skipped because their extension is blocked
+- Number of generated WordPress thumbnails skipped
 - Detailed error messages for any issues encountered during import
 
 ### Error Handling

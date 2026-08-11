@@ -21,6 +21,7 @@ use Neos\Flow\Persistence\PersistenceManagerInterface;
 use NEOSidekick\WordPressAssetRedirect\Exception\InvalidPathException;
 use NEOSidekick\WordPressAssetRedirect\Exception\PathNotReadableException;
 use NEOSidekick\WordPressAssetRedirect\Service\AssetDirectoryIteratorService;
+use NEOSidekick\WordPressAssetRedirect\Service\WordPressAssetFilenameService;
 
 /**
  * Command controller for importing WordPress assets into the Neos Media module
@@ -36,11 +37,18 @@ final class AssetsCommandController extends CommandController
     protected $assetDirectoryIteratorService;
 
     /**
+     * @Flow\Inject
+     * @var WordPressAssetFilenameService
+     */
+    protected $wordPressAssetFilenameService;
+
+    /**
      * Counters for tracking import statistics
      */
     private int $importedCount = 0;
     private int $skippedCount = 0;
     private int $blockedCount = 0;
+    private int $thumbnailCount = 0;
     private int $failedCount = 0;
     private array $importErrors = [];
 
@@ -226,6 +234,7 @@ final class AssetsCommandController extends CommandController
         $this->outputLine("- New assets imported: %d", [$this->importedCount]);
         $this->outputLine("- Files skipped (already exist): %d", [$this->skippedCount]);
         $this->outputLine("- Files skipped (blocked extension): %d", [$this->blockedCount]);
+        $this->outputLine("- Files skipped (WordPress thumbnails): %d", [$this->thumbnailCount]);
         $this->outputLine("- Files failed: %d", [$this->failedCount]);
 
         if (empty($errors) && empty($this->importErrors)) {
@@ -269,6 +278,12 @@ final class AssetsCommandController extends CommandController
             )
         ) {
             $this->blockedCount++;
+            return;
+        }
+
+        // WordPress stores generated size variants beside originals; only originals become Neos assets.
+        if ($this->wordPressAssetFilenameService->isThumbnail($fileInfo->getFilename())) {
+            $this->thumbnailCount++;
             return;
         }
 

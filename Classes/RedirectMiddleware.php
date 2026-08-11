@@ -8,6 +8,7 @@ use Neos\Flow\Persistence\Exception\InvalidQueryException;
 use Neos\Flow\ResourceManagement\ResourceManager;
 use Neos\Media\Domain\Model\AssetInterface;
 use Neos\Media\Domain\Repository\AssetRepository;
+use NEOSidekick\WordPressAssetRedirect\Service\WordPressAssetFilenameService;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -42,6 +43,12 @@ class RedirectMiddleware implements MiddlewareInterface
     protected $responseFactory;
 
     /**
+     * @Flow\Inject
+     * @var WordPressAssetFilenameService
+     */
+    protected $wordPressAssetFilenameService;
+
+    /**
      * @inheritDoc
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -60,7 +67,7 @@ class RedirectMiddleware implements MiddlewareInterface
         array_pop($filenameAsArray);
         $filenameWithoutExtension = join('.', $filenameAsArray);
         // Remove thumbnail size
-        $filenameWithoutExtensionWithoutThumbnailSize = preg_replace('(-[0-9]{2,4}x[0-9]{2,4})', '', $filenameWithoutExtension);
+        $filenameWithoutExtensionWithoutThumbnailSize = $this->wordPressAssetFilenameService->removeThumbnailSize($filenameWithoutExtension);
         try {
             $queryResult = $this->assetRepository->findBySearchTermOrTags($filenameWithoutExtensionWithoutThumbnailSize);
         } catch (InvalidQueryException $e) {
