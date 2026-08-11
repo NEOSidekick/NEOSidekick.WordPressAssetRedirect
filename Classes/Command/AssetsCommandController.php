@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace NEOSidekick\WordPressAssetRedirect\Command;
@@ -26,6 +27,8 @@ use NEOSidekick\WordPressAssetRedirect\Service\AssetDirectoryIteratorService;
  */
 final class AssetsCommandController extends CommandController
 {
+    private const PERSISTENCE_BATCH_SIZE = 250;
+
     /**
      * @Flow\Inject
      * @var AssetDirectoryIteratorService
@@ -37,6 +40,7 @@ final class AssetsCommandController extends CommandController
      */
     private int $importedCount = 0;
     private int $skippedCount = 0;
+    private int $failedCount = 0;
     private array $importErrors = [];
 
     /**
@@ -115,9 +119,8 @@ final class AssetsCommandController extends CommandController
                 $this->quit(1);
             }
             $targetName = $collection;
-        }
-        // Find or create the tag if specified
-        elseif ($tag !== null) {
+        } elseif ($tag !== null) {
+            // Find or create the tag if specified
             $target = $this->tagRepository->findOneByLabel($tag);
             if ($target === null) {
                 // Create a new tag
@@ -127,6 +130,11 @@ final class AssetsCommandController extends CommandController
                 $target = $newTag;
             }
             $targetName = $tag;
+        }
+
+        $targetIdentifier = $this->persistenceManager->getIdentifierByObject($target);
+        if (!is_string($targetIdentifier)) {
+            throw new \RuntimeException(sprintf('Could not determine the persistence identifier of target "%s".', $targetName));
         }
 
         // Validate the file type filter if provided
@@ -162,15 +170,31 @@ final class AssetsCommandController extends CommandController
             // Initialize progress bar
             $this->output->progressStart($totalFiles);
 
-            // Process each file with progress updates
-            $fileProcessorCallback = function (\SplFileInfo $fileInfo) use ($target) {
+            // Process each file with progress updates and bounded persistence batches
+            $filesSinceLastFlush = 0;
+            $fileProcessorCallback = function (\SplFileInfo $fileInfo) use (
+                &$target,
+                &$filesSinceLastFlush,
+                $targetIdentifier,
+                $collection
+            ) {
                 $this->processFile($fileInfo, $target);
                 $this->output->progressAdvance();
+
+                $filesSinceLastFlush++;
+                if ($filesSinceLastFlush >= self::PERSISTENCE_BATCH_SIZE) {
+                    $this->persistAndClearState();
+                    $target = $this->reloadTarget($targetIdentifier, $collection !== null);
+                    $filesSinceLastFlush = 0;
+                }
             };
 
             $this->assetDirectoryIteratorService->iterate($path, $fileProcessorCallback, $type);
             $this->output->progressFinish();
 
+            if ($filesSinceLastFlush > 0) {
+                $this->persistenceManager->persistAll();
+            }
         } catch (InvalidPathException | PathNotReadableException $e) {
             $this->outputLine('<error>FATAL ERROR:</error> %s', [$e->getMessage()]);
             $this->quit(1);
@@ -182,12 +206,13 @@ final class AssetsCommandController extends CommandController
         // Display summary report
         $this->outputLine("\n<info>Import Summary:</info>");
         if ($type !== null) {
-            $this->outputLine("- Total files of type '%s' found: %d", [$type, $this->importedCount + $this->skippedCount]);
+            $this->outputLine("- Total files of type '%s' found: %d", [$type, $totalFiles]);
         } else {
-            $this->outputLine("- Total files found: %d", [$this->importedCount + $this->skippedCount]);
+            $this->outputLine("- Total files found: %d", [$totalFiles]);
         }
         $this->outputLine("- New assets imported: %d", [$this->importedCount]);
         $this->outputLine("- Files skipped (already exist): %d", [$this->skippedCount]);
+        $this->outputLine("- Files failed: %d", [$this->failedCount]);
 
         if (empty($errors) && empty($this->importErrors)) {
             $this->outputLine("\n<info>Import completed successfully.</info>");
@@ -243,18 +268,23 @@ final class AssetsCommandController extends CommandController
                 'title' => $fileInfo->getFilename(),
             ];
 
-            // Convert the data to an Asset object
-            $newAsset = $this->propertyMapper->convert(
-                $assetData,
-                AssetInterface::class,
-                $propertyMappingConfiguration
-            );
-
-            // Verify the conversion was successful
-            if (!($newAsset instanceof Asset)) {
-                throw new \RuntimeException(
-                    sprintf('Failed to convert resource to asset for file "%s"', $fileInfo->getFilename())
+            try {
+                // Convert the data to an Asset object
+                $newAsset = $this->propertyMapper->convert(
+                    $assetData,
+                    AssetInterface::class,
+                    $propertyMappingConfiguration
                 );
+
+                // Verify the conversion was successful
+                if (!($newAsset instanceof Asset)) {
+                    throw new \RuntimeException(
+                        sprintf('Failed to convert resource to asset for file "%s"', $fileInfo->getFilename())
+                    );
+                }
+            } catch (\Exception $e) {
+                $this->resourceManager->deleteResource($persistentResource);
+                throw $e;
             }
 
             // Add the asset to the target collection or tag and persist it
@@ -268,13 +298,32 @@ final class AssetsCommandController extends CommandController
             }
 
             $this->importedCount++;
-
         } catch (\Exception $e) {
+            $this->failedCount++;
             $this->importErrors[] = sprintf(
                 'Error importing file "%s": %s',
                 $fileInfo->getRealPath(),
                 $e->getMessage()
             );
         }
+    }
+
+    private function persistAndClearState(): void
+    {
+        $this->persistenceManager->persistAll();
+        $this->persistenceManager->clearState();
+    }
+
+    private function reloadTarget(string $targetIdentifier, bool $isAssetCollection): AssetCollection|Tag
+    {
+        $target = $isAssetCollection
+            ? $this->assetCollectionRepository->findByIdentifier($targetIdentifier)
+            : $this->tagRepository->findByIdentifier($targetIdentifier);
+
+        if (!$target instanceof AssetCollection && !$target instanceof Tag) {
+            throw new \RuntimeException(sprintf('Could not reload import target "%s".', $targetIdentifier));
+        }
+
+        return $target;
     }
 }

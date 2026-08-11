@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace NEOSidekick\WordPressAssetRedirect\Service;
@@ -28,7 +29,7 @@ final class AssetDirectoryIteratorService
      */
     private array $fileTypeFilters = [
         'image' => ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'],
-        'document' => ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt']
+        'document' => ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'tif', 'tiff']
     ];
 
     /**
