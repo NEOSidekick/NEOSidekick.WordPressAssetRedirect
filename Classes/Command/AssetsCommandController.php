@@ -40,8 +40,15 @@ final class AssetsCommandController extends CommandController
      */
     private int $importedCount = 0;
     private int $skippedCount = 0;
+    private int $blockedCount = 0;
     private int $failedCount = 0;
     private array $importErrors = [];
+
+    /**
+     * @Flow\InjectConfiguration(package="Neos.Flow", path="resource.extensionsBlockedFromUpload")
+     * @var array<string, bool>
+     */
+    protected array $extensionsBlockedFromUpload = [];
 
     /**
      * @Flow\Inject
@@ -212,6 +219,7 @@ final class AssetsCommandController extends CommandController
         }
         $this->outputLine("- New assets imported: %d", [$this->importedCount]);
         $this->outputLine("- Files skipped (already exist): %d", [$this->skippedCount]);
+        $this->outputLine("- Files skipped (blocked extension): %d", [$this->blockedCount]);
         $this->outputLine("- Files failed: %d", [$this->failedCount]);
 
         if (empty($errors) && empty($this->importErrors)) {
@@ -245,6 +253,13 @@ final class AssetsCommandController extends CommandController
      */
     private function processFile(\SplFileInfo $fileInfo, AssetCollection|Tag $target): void
     {
+        $extension = strtolower($fileInfo->getExtension());
+        // Resources blocked by Flow cannot be published and would abort the entire persistence batch.
+        if ($extension !== '' && ($this->extensionsBlockedFromUpload[$extension] ?? false) === true) {
+            $this->blockedCount++;
+            return;
+        }
+
         try {
             // Import the file as a resource
             $persistentResource = $this->resourceManager->importResource($fileInfo->getRealPath());
