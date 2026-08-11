@@ -51,6 +51,12 @@ final class AssetsCommandController extends CommandController
     protected array $extensionsBlockedFromUpload = [];
 
     /**
+     * @Flow\InjectConfiguration(package="NEOSidekick.WordPressAssetRedirect", path="assetImport.extensionsBlockedFromImport")
+     * @var array<string, bool>
+     */
+    protected array $extensionsBlockedFromImport = [];
+
+    /**
      * @Flow\Inject
      * @var ResourceManager
      */
@@ -254,8 +260,14 @@ final class AssetsCommandController extends CommandController
     private function processFile(\SplFileInfo $fileInfo, AssetCollection|Tag $target): void
     {
         $extension = strtolower($fileInfo->getExtension());
-        // Resources blocked by Flow cannot be published and would abort the entire persistence batch.
-        if ($extension !== '' && ($this->extensionsBlockedFromUpload[$extension] ?? false) === true) {
+        // Blocked resources could execute after publication or abort the entire persistence batch.
+        if (
+            $extension !== ''
+            && (
+                ($this->extensionsBlockedFromUpload[$extension] ?? false) === true
+                || ($this->extensionsBlockedFromImport[$extension] ?? false) === true
+            )
+        ) {
             $this->blockedCount++;
             return;
         }

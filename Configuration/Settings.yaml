@@ -6,8 +6,60 @@ Neos:
           position: 'after routing 1000'
           middleware: 'NEOSidekick\WordPressAssetRedirect\RedirectMiddleware'
 
-# ----------------------------------------------------------------------
-# Settings for the CLI Asset Import Tool
-# ----------------------------------------------------------------------
-# Note: The main path for the asset import scanner is provided as a required '--path' argument
-# to the CLI command (assets:import). This file is reserved for future, optional settings.
+NEOSidekick:
+  WordPressAssetRedirect:
+    assetImport:
+      # Block executable, active-content and server-configuration files in addition to Flow's denylist.
+      extensionsBlockedFromImport:
+        'asp': true
+        'asa': true
+        'ashx': true
+        'asmx': true
+        'cfm': true
+        'cfml': true
+        'cshtml': true
+        'vbhtml': true
+        'jsp': true
+        'jspf': true
+        'jspx': true
+        'php2': true
+        'php6': true
+        'php7': true
+        'php8': true
+        'phps': true
+        'pht': true
+        'phtm': true
+        'phar': true
+        'inc': true
+        'htm': true
+        'html': true
+        'hta': true
+        'xhtml': true
+        'shtml': true
+        'js': true
+        'mjs': true
+        'swf': true
+        'svgz': true
+        'htaccess': true
+        'config': true
+        'conf': true
+        'ini': true
+        'env': true
+        'bat': true
+        'cmd': true
+        'com': true
+        'exe': true
+        'dll': true
+        'msi': true
+        'sh': true
+        'bash': true
+        'zsh': true
+        'fish': true
+        'ps1': true
+        'psm1': true
+        'vbs': true
+        'wsf': true
+        'scr': true
+        'class': true
+        'jar': true
+        'war': true

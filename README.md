@@ -102,6 +102,7 @@ The command provides a comprehensive summary report:
 - Total files found
 - Number of new assets successfully imported
 - Number of files skipped (because they already existed as assets)
+- Number of files skipped because their extension is blocked
 - Detailed error messages for any issues encountered during import
 
 ### Error Handling
